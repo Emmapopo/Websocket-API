@@ -1,0 +1,6 @@
+asyncio
+websockets
+multiprocess
+sqlalchemy
+sqlalchemy_serializer
+mysqlclient
