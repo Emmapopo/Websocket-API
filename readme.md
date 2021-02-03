@@ -21,7 +21,18 @@ Once a connection is made, it returns all the pending messages yet to be deliver
 TO SEND A MESSAGE
 Here are the accepted format for the messages:
 
-There are 5 types of messages that can be sent
+There are 8 types of messages that can be sent
+1) Initializing a Personal message
+2) Sending a Personal Message
+3) Initializing a Group message
+4) Sending a Group Message
+5) Sending Seen Notification [for personal message]
+6) Lecturer going a class group
+7) A lecturer sending a message to a class:
+8) lecturer and class members replying to a message sent by the lecturer.
+9) A lecturer sending a message to a course:
+10) lecturer and course members replying to a message sent by the lecturer.
+
 
 
 1) Initializing a Personal message
@@ -132,6 +143,74 @@ where:
 "seen" is just the type of message to dinstiguish it from other message types. 
 
 Then it updates the message statuses as seen in the database.
+
+
+6) Lecturer joing a class group
+A lecturer can join any class group in the school to serve as the class adviser. Once the lecturer joins, he or she will be able to send message to the class.
+
+The message is of the form: {"class_id": 1, "type": "lec_class_assign"}
+where class_id is the id of the class the lecturer wants to join.
+
+If successful, it returns: {"Status": "Successfully joined"}
+
+If it's not successful, it returns: {"Status": "Not successful"}
+
+
+7) A lecturer sending a message to a class:
+A lecturer sending a message to a class is of the form:
+
+{"class_id" : 1, "title" : "test questions", "content": "submit your assignment on time", "attachments": ["http://123jh", "http://23jloo"] "type": "send_class_message"}
+
+NB: attachments is the list of the attachments of the document. If there's no attachment, it is sent as an empty list []
+
+If successful, the message_id of the message is sent so it is updated in the database.
+
+{
+    "message_id": 2
+}
+
+
+8) lecturer and class members replying to a message sent by the lecturer.
+
+The reply message is of the form: {"message_id" : 1, "content": "What textbook sir?", "attachments": ["http://123jh", "http://23jloo"], "type": "reply_class_message"}
+
+NB: attachments is the list of the attachments of the document. If there's no attachment, it is sent as an empty list []
+
+If successful, the message_id of the message is sent so it is updated in the database.
+
+{
+    "message_id": 2
+}
+
+
+
+9) A lecturer sending a message to a course:
+A lecturer sending a message to a course is of the form:
+
+{"course_id" : 1, "title" : "test questions", "content": "submit your assignment on time", "attachments": ["http://123jh", "http://23jloo"] "type": "send_class_message"}
+
+NB: attachments is the list of the attachments of the document. If there's no attachment, it is sent as an empty list []
+
+If successful, the message_id of the message is sent so it is updated in the database.
+
+{
+    "message_id": 2
+}
+
+
+10) lecturer and course members replying to a message sent by the lecturer.
+
+The reply message is of the form: {"message_id" : 1, "content": "What textbook sir?", "attachments": ["http://123jh", "http://23jloo"], "type": "reply_course_message"}
+
+NB: attachments is the list of the attachments of the document. If there's no attachment, it is sent as an empty list []
+
+If successful, the message_id of the message is sent so it is updated in the database.
+
+{
+    "message_id": 2
+}
+
+
 
 
 

@@ -21,6 +21,14 @@ from client_controller.clients import Clients
 from client_controller.client import ClientAbstract
 from client_controller.clients import ClientsAbstract
 
+from platform_model.class_mem import ClassMem
+from platform_model.class_message import ClassMessageSend, ClassMessageSendAttach, ClassMessageReply, ClassMessageReplyAttach
+from platform_model.course_mem import CourseMem
+from platform_model.course_message import CourseMessageSend, CourseMessageSendAttach, CourseMessageReply, CourseMessageReplyAttach
+
+from user_model import User
+from user_type import UserType
+
 class HandleMessageFunc():
     def __init__(self, sender, clients, message, timestamp):
         self.sender  = sender
@@ -37,7 +45,7 @@ class HandleMessageFunc():
 
         try:
             online_status = self.clients.get_client(str(recipient_id[0])) #Checks to see if the client is online so it can update the status as delivered
-            print(online_status)
+            print('online_status')
             message_status = 'delivered'
 
         except:
@@ -140,6 +148,207 @@ class HandleMessageFunc():
         for i in mem:
             session.add(GroupConvMem(db_conv_id, i))
         session.commit()
+
+    async def lec_class_assign(self, user_id):
+        try:
+            class_id = self.message['class_id']
+            session.add(ClassMem(class_id, int(user_id)))
+            session.commit()
+            await self.clients.get_client(str(user_id)).send(json.dumps({"Status": "Successfully joined"}))
+
+        except:
+            await self.clients.get_client(str(user_id)).send(json.dumps({"Status": "Not successful"}))
+
+    
+    def confirm_user_lec(self, user_id):
+        usertype = session.query(User.user_type).filter_by(id=user_id).first()[0]
+        if usertype == UserType.Lecturer:
+            x = 1
+        else:
+            x = 0
+
+        return x
+
+    async def send_class_message(self, user_id):
+        class_id = self.message['class_id']
+        title = self.message['title']
+        content = self.message['content']
+        files = self.message['attachments']
+        user_id = int(user_id)
+
+        # Get message recepients
+        recipient_id = session.query(ClassMem.member_id).filter_by(class_id=class_id).all()
+        recipient_id = [item for t in recipient_id for item in t]
+        recipient_id.remove(int(user_id))
+        print(recipient_id)
+
+        # Save the message in the DB
+        session.add(ClassMessageSend(user_id, class_id, title, content, self.timestamp))
+        session.commit()
+
+        # Get the message id from the database
+        message_id = session.query(ClassMessageSend.id).filter(and_(ClassMessageSend.timestamp == self.timestamp, ClassMessageSend.sender_id == user_id)).first()[0]
+        self.message['message_id'] = message_id
+
+        # Save files if there are any
+        if files != [] :
+            for fil in files:
+                session.add(ClassMessageSendAttach(message_id, fil))
+                session.commit()
+
+        # Sends message id to the sender back
+        await self.clients.get_client(str(user_id)).send(json.dumps({"message_id": self.message["message_id"]}, indent=4, sort_keys=True, default=str))  
+
+        # Send message back to the recievers
+    
+        for receiver in recipient_id:
+            try:
+                online = self.clients.get_client(str(receiver))
+                await self.clients.get_client(str(receiver)).send(json.dumps(self.message, indent=4, sort_keys=True, default=str))
+
+            except:
+                continue
+
+    
+
+
+    async def reply_class_message (self, user_id):
+        or_msg_id = self.message['message_id']
+        print(type(or_msg_id))
+        content = self.message['content']
+        files = self.message['attachments']
+        user_id = int(user_id)
+
+
+        # Get message recepients
+        class_id = session.query(ClassMessageSend.class_id).filter_by(id = or_msg_id).first()[0]
+        recipient_id = session.query(ClassMem.member_id).filter_by(class_id=class_id).all()
+        recipient_id = [item for t in recipient_id for item in t]
+        recipient_id.remove(int(user_id))
+        print(recipient_id)
+
+        # Save the message in the DB
+        model = ClassMessageReply(or_msg_id, user_id, content, self.timestamp)
+        session.add(model)
+        session.commit()
+
+         # Get the message id from the database
+        message_id = session.query(ClassMessageReply.id).filter(and_(ClassMessageReply.timestamp == self.timestamp, ClassMessageReply.sender_id == user_id)).first()[0]
+        self.message['message_id'] = message_id
+
+        # Save files if there are any
+        if files != [] :
+            for fil in files:
+                session.add(ClassMessageReplyAttach(message_id, fil))
+                session.commit()
+
+        # Sends message id to the sender back
+        await self.clients.get_client(str(user_id)).send(json.dumps({"message_id": self.message["message_id"]}, indent=4, sort_keys=True, default=str))  
+
+        # Send message back to the recievers
+        for receiver in recipient_id:
+            try:
+                online = self.clients.get_client(str(receiver))
+                await self.clients.get_client(str(receiver)).send(json.dumps(self.message, indent=4, sort_keys=True, default=str))
+
+            except:
+                continue
+
+
+
+    async def send_course_message(self, user_id):
+        course_id = self.message['course_id']
+        title = self.message['title']
+        content = self.message['content']
+        files = self.message['attachments']
+        user_id = int(user_id)
+
+        # Get message recepients
+        recipient_id = session.query(CourseMem.member_id).filter_by(course_id=course_id).all()
+        recipient_id = [item for t in recipient_id for item in t]
+        recipient_id.remove(int(user_id))
+
+        # Save the message in the DB
+        # session.add(CourseMessageSend(user_id, course_id, title, content, self.timestamp))
+        # session.commit()
+
+        model = CourseMessageSend(user_id, course_id, title, content, self.timestamp)
+        session.add(model)
+        session.commit
+
+        # Get the message id from the database
+        message_id = session.query(CourseMessageSend.id).filter(and_(CourseMessageSend.timestamp == self.timestamp, CourseMessageSend.sender_id == user_id)).first()[0]
+        self.message['message_id'] = message_id
+
+        # Save files if there are any
+        if files != [] :
+            for fil in files:
+                session.add(CourseMessageSendAttach(message_id, fil))
+                session.commit()
+
+        # Sends message id to the sender back
+        await self.clients.get_client(str(user_id)).send(json.dumps({"message_id": self.message["message_id"]}, indent=4, sort_keys=True, default=str))  
+
+        # Send message back to the recievers
+        for receiver in recipient_id:
+            try:
+                online = self.clients.get_client(str(receiver))
+                await self.clients.get_client(str(receiver)).send(json.dumps(self.message, indent=4, sort_keys=True, default=str))
+
+            except:
+                continue
+
+    
+
+    async def reply_course_message (self, user_id):
+        or_msg_id = self.message['message_id']
+        content = self.message['content']
+        files = self.message['attachments']
+        user_id = int(user_id)
+
+
+        # Get message recepients
+        course_id = session.query(CourseMessageSend.course_id).filter_by(id = or_msg_id).first()[0]
+        recipient_id = session.query(CourseMem.member_id).filter_by(course_id=course_id).all()
+        recipient_id = [item for t in recipient_id for item in t]
+        recipient_id.remove(int(user_id))
+
+        # Save the message in the DB
+        session.add(CourseMessageReply(or_msg_id, user_id, content, self.timestamp))
+        session.commit()
+
+         # Get the message id from the database
+        message_id = session.query(CourseMessageReply.id).filter(and_(CourseMessageReply.timestamp == self.timestamp, CourseMessageReply.sender_id == user_id)).first()[0]
+        self.message['message_id'] = message_id
+
+        # Save files if there are any
+        if files != [] :
+            for fil in files:
+                session.add(CourseMessageReplyAttach(message_id, fil))
+                session.commit()
+
+        # Sends message id to the sender back
+        await self.clients.get_client(str(user_id)).send(json.dumps({"message_id": self.message["message_id"]}, indent=4, sort_keys=True, default=str))  
+
+        # Send message back to the recievers
+        for receiver in recipient_id:
+            try:
+                online = self.clients.get_client(str(receiver))
+                await self.clients.get_client(str(receiver)).send(json.dumps(self.message, indent=4, sort_keys=True, default=str))
+
+            except:
+                continue
+    
+    
+    
+
+
+
+
+
+
+
+
 
     
 

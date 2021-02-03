@@ -1,4 +1,4 @@
-#This defines the abstract clients class. A abstract class defines the structure to be followed in terms of abstract methods. There's no implementation in an abstarct class.
+#This defines the abstract clients class. A abstract class defines the structure to be followed in terms of abstract methods. There's no implementation in an abstract class.
 class ClientsAbstract:
     def __init__(self):
         pass
